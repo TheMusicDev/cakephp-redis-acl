@@ -31,9 +31,10 @@ jobs:
         run: composer update --prefer-dist --no-interaction --no-progress ${{ matrix.lowest && '--prefer-lowest --prefer-stable' || '' }}
       - name: Start Redis with one ACL user and the default user disabled
         run: |
-          # apt installs and auto-starts redis-server (systemd) on port 6379; stop it so our
+          # Installing redis-server also auto-starts it (systemd) on port 6379; stop it so our
           # daemonized instance binds, then start ours with a conf file (same directives as
           # docker/redis-acl.conf, valid on every supported Redis).
+          sudo apt-get update -qq && sudo apt-get install -y -qq redis-server
           sudo systemctl stop redis-server || true
           cat > /tmp/redis-acl-test.conf <<'EOF'
           port 6379
