@@ -51,8 +51,25 @@ final class RedisAclPluginTest extends TestCase
         $app->pluginBootstrap();
     }
 
+    /**
+     * The regression guard for the bug that the plugin bootstrap hook alone cannot fix.
+     *
+     * `$originalMap` is the live map as it stands before this test touches anything — i.e. after
+     * `vendor/autoload.php`, and before any `Application::bootstrap()` in this process. A host parses its
+     * Cache configs in `config/bootstrap.php`, which runs before `pluginBootstrap()`, and `parseDsn()`
+     * resolves `className` at parse time; so unless the remap is already in place *here*, an ACL `redis://`
+     * config in a host's `app.php` silently gets the stock engine. Composer's `autoload.files` entry in
+     * composer.json is what makes this pass — remove it and this is the test that fails.
+     */
+    public function testRemapIsInPlaceBeforeAnyApplicationBootstrap(): void
+    {
+        $this->assertSame(AclRedisEngine::class, $this->originalMap['redis'] ?? null);
+    }
+
     public function testBootstrapRemapsTheStockRedisScheme(): void
     {
+        $this->setMap(['redis' => RedisEngine::class]);
+
         $this->boot();
 
         $this->assertSame(AclRedisEngine::class, Cache::getDsnClassMap()['redis']);
@@ -87,6 +104,9 @@ final class RedisAclPluginTest extends TestCase
     public function testDiscreteClassNameNextToAUrlWouldHaveBeenDiscardedWithoutTheRemap(): void
     {
         // The reason the remap exists: without it, `className` next to a `url` is silently dropped.
+        // The map is forced back to stock because the plugin has already remapped it at autoload time.
+        $this->setMap(['redis' => RedisEngine::class]);
+
         $parsed = Cache::parseDsn('redis://user:pass@localhost:6379');
         $this->assertSame(RedisEngine::class, $parsed['className']);
     }

@@ -14,8 +14,15 @@ Requires phpredis **5.3.0+** (`ext-redis`), where `Redis::auth()` first accepts 
 composer require themusicdev/redis-acl
 ```
 
-Load the plugin (`config/plugins.php`: `'TheMusicDev/RedisAcl' => []`). That is the whole setup — the plugin remaps the
-`redis://` URL scheme from the stock engine to the ACL-capable one, so DSNs and `className` configs both work.
+That is the whole setup. The package remaps the `redis://` URL scheme from the stock engine to the ACL-capable one
+through a Composer `autoload.files` entry, so DSNs and `className` configs both work with no application change.
+Loading it as a plugin (`config/plugins.php`: `'TheMusicDev/RedisAcl' => []`) is optional and does nothing extra.
+
+The remap **must** happen at autoload time, not from a plugin bootstrap hook: `Cache::setConfig()` parses a `url`
+eagerly and `StaticConfigTrait::parseDsn()` resolves `className` from the DSN class map at parse time, and a host
+parses its Cache configs in `config/bootstrap.php` — which `BaseApplication::bootstrap()` requires *before*
+`pluginBootstrap()` runs. Remapping from the plugin hook alone lands too late: the config already holds the stock
+engine, which calls `Redis::auth()` with a scalar and fails at the first cache write, with nothing wrong at boot.
 
 ## Use it
 
@@ -41,8 +48,9 @@ Either form reaches this plugin's engine:
 ```
 
 Do **not** set a discrete `className` alongside a `url`: CakePHP's DSN parsing wins its merge (`$parsed + $config`), so
-the `className` you set next to a `url` is silently discarded — the remap in the plugin bootstrap is what makes the DSN
-form work. A `username` set without a `password` throws (`CakeException`) — it can only authenticate as nobody.
+the `className` you set next to a `url` is silently discarded — the scheme remap is what makes the DSN form work.
+URL-encode a password containing `@`, `:`, `?` or `#`, or `parseDsn()` will split the DSN in the wrong place.
+A `username` set without a `password` throws (`CakeException`) — it can only authenticate as nobody.
 `RedisCluster` config is inherited from the stock engine unchanged and its array-auth path is not tested here; on a
 cluster, verify against your phpredis version.
 
