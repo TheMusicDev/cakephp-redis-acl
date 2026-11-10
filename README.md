@@ -4,7 +4,7 @@ Auth to a Redis **6 ACL user** from a CakePHP 5 cache config or `redis://` URL. 
 `username` key in its config, ignores the username in a DSN and calls `Redis::auth()` with a scalar password only — so a
 Redis server running ACL users (username + password) cannot be used. This plugin ships one `RedisEngine` subclass and
 one line of bootstrap; nothing else. It exists to be deleted the day CakePHP consumes the DSN username natively
-([upstream issue](https://github.com/cakephp/cakephp/issues/…)).
+([upstream issue](https://github.com/cakephp/cakephp/issues/19792)).
 
 Requires phpredis **5.3.0+** (`ext-redis`), where `Redis::auth()` first accepts the array form `[username, password]`.
 
