@@ -1,0 +1,12 @@
+# Test Redis for the plugin's integration suite (Redis 8 with an ACL user, default user disabled, like
+# production; a scalar `auth('aclpass')` cannot succeed there, so a passing test proves the array form).
+# Port 6381 so it does not collide with the app-creds dev stack (6380) or an app's own Redis.
+#   docker compose up -d --wait redistest && REDIS_TEST_URL=redis://acltest:aclpass@localhost:6381?prefix=int_ composer test
+services:
+  redistest:
+    image: redis:8-alpine
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+    volumes:
+      - ./docker/redis-acl.conf:/usr/local/etc/redis/redis.conf:ro
+    ports:
+      - "6381:6379"

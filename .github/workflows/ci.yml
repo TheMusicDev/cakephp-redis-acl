@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  tests:
+    name: PHP ${{ matrix.php }}${{ matrix.lowest && ' (lowest dependencies)' || '' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.2', '8.3', '8.4', '8.5']
+        lowest: [false]
+        include:
+          - php: '8.2'
+            lowest: true
+    steps:
+      - uses: actions/checkout@v7
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: mbstring, intl, redis
+          coverage: none
+      - name: Validate composer.json
+        run: composer validate --strict
+      - name: Install dependencies
+        run: composer update --prefer-dist --no-interaction --no-progress ${{ matrix.lowest && '--prefer-lowest --prefer-stable' || '' }}
+      - name: Start Redis with one ACL user and the default user disabled
+        run: |
+          # Installing redis-server also auto-starts it (systemd) on port 6379; stop it so our
+          # daemonized instance binds, then start ours with a conf file (same directives as
+          # docker/redis-acl.conf, valid on every supported Redis).
+          sudo apt-get update -qq && sudo apt-get install -y -qq redis-server
+          sudo systemctl stop redis-server || true
+          cat > /tmp/redis-acl-test.conf <<'EOF'
+          port 6379
+          user default off
+          user acltest on >aclpass ~* +@all
+          save ""
+          appendonly no
+          EOF
+          redis-server /tmp/redis-acl-test.conf --daemonize yes
+          test "$(redis-cli --user acltest --pass aclpass PING)" = "PONG"
+      - name: Run tests
+        run: vendor/bin/phpunit
+        env:
+          REDIS_TEST_URL: redis://acltest:aclpass@localhost:6379?prefix=ci_
+
+  quality:
+    name: Coding standard and static analysis
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          extensions: mbstring, intl, redis
+          coverage: none
+      - name: Install dependencies
+        run: composer update --prefer-dist --no-interaction --no-progress
+      - name: Coding standard
+        run: vendor/bin/phpcs
+      - name: Static analysis
+        run: vendor/bin/phpstan analyse --no-progress
