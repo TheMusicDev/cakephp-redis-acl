@@ -43,7 +43,7 @@ jobs:
           save ""
           appendonly no
           EOF
-          redis-server --daemonize yes /tmp/redis-acl-test.conf
+          redis-server /tmp/redis-acl-test.conf --daemonize yes
           test "$(redis-cli --user acltest --pass aclpass PING)" = "PONG"
       - name: Run tests
         run: vendor/bin/phpunit
