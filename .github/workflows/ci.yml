@@ -31,10 +31,19 @@ jobs:
         run: composer update --prefer-dist --no-interaction --no-progress ${{ matrix.lowest && '--prefer-lowest --prefer-stable' || '' }}
       - name: Start Redis with one ACL user and the default user disabled
         run: |
-          sudo apt-get update -qq && sudo apt-get install -y -qq redis-server
-          redis-server --daemonize yes --port 6379 \
-            --user default off \
-            --user acltest on '>aclpass' '~*' '+@all'
+          # apt installs and auto-starts redis-server (systemd) on port 6379; stop it so our
+          # daemonized instance binds, then start ours with a conf file (same directives as
+          # docker/redis-acl.conf, valid on every supported Redis).
+          sudo systemctl stop redis-server || true
+          cat > /tmp/redis-acl-test.conf <<'EOF'
+          port 6379
+          user default off
+          user acltest on >aclpass ~* +@all
+          save ""
+          appendonly no
+          EOF
+          redis-server --daemonize yes /tmp/redis-acl-test.conf
+          test "$(redis-cli --user acltest --pass aclpass PING)" = "PONG"
       - name: Run tests
         run: vendor/bin/phpunit
         env:
