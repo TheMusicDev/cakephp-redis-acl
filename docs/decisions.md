@@ -38,7 +38,7 @@ Redis-backed sessions on its dokploy staging environment, with a Redis server ru
   scalar `auth('aclpass')` cannot succeed by accident: a passing test proves the array form reached Redis. Locally it
   runs behind `REDIS_TEST_URL` against the container in `docker-compose.yml`; in CI against a `redis-server` started
   with the same directives.
-- **Upstream gap to be filed** on `cakephp/cakephp`: `RedisEngine` has no `username` key, ignores the DSN username
-  captured by `StaticConfigTrait::parseDsn()`, and calls `Redis::auth()` with a scalar only — Redis 6 ACL users are
-  unusable from stock config/DSNs (checked against cakephp 5.4: `src/Cache/Engine/RedisEngine.php`, `_defaultConfig`
-  and `connectRedis()`). Link from the README when filed.
+- **Upstream gap filed** on `cakephp/cakephp` as [#19792](https://github.com/cakephp/cakephp/issues/19792):
+  `RedisEngine` has no `username` key, ignores the DSN username captured by `StaticConfigTrait::parseDsn()`, and calls
+  `Redis::auth()` with a scalar only — Redis 6 ACL users are unusable from stock config/DSNs (checked against cakephp
+  5.4: `src/Cache/Engine/RedisEngine.php`, `_defaultConfig` and `connectRedis()`). Linked from the README.
