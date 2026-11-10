@@ -31,7 +31,10 @@
     "autoload": {
         "psr-4": {
             "TheMusicDev\\RedisAcl\\": "src/"
-        }
+        },
+        "files": [
+            "config/bootstrap.php"
+        ]
     },
     "autoload-dev": {
         "psr-4": {

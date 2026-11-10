@@ -19,6 +19,15 @@ Redis-backed sessions on its dokploy staging environment, with a Redis server ru
   DSN with `url` and the parsed array wins the merge (`$parsed + $config`), so a discrete `className` next to a
   `url` is silently discarded — an ACL config would quietly fall back to the stock engine. `Cache::setDsnClassMap()`
   fixes the scheme itself, once, in the plugin bootstrap. No invented `redis-acl://` vocabulary.
+- **The remap ships through Composer's `autoload.files`, not only the plugin bootstrap hook** (fixed 2026-11-10,
+  after review; 1.0.0 had the hook alone and was broken for the DSN form). `Cache::setConfig()` parses a `url`
+  eagerly and `StaticConfigTrait::parseDsn()` resolves `className` from the DSN class map *at parse time*. A host
+  parses its Cache configs in `config/bootstrap.php`, which `BaseApplication::bootstrap()` requires **before**
+  `Http\Server::run()` calls `pluginBootstrap()`. So the hook fires after every `redis://` config has already
+  resolved to the stock engine — which then calls `Redis::auth()` with a scalar and fails at the first cache
+  write, with nothing wrong at boot. Composer's autoload runs before all application code, so the map is correct
+  by the time any host config is parsed. The file stays idempotent (the value guard below), so running from both
+  entry points is harmless, and loading the plugin becomes optional.
 - **The remap guards on the value, not the key's absence.** `Cache` ships `redis => RedisEngine::class` in its own
   default class map, so a key-existence check would never remap anything. The bootstrap remaps only while the map
   still holds the stock engine, so a host that mapped `redis` itself is never clobbered — the plugin-config
